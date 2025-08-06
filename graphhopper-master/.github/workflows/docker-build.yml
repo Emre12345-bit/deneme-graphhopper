@@ -1,0 +1,39 @@
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      run: |
+        docker-compose build --no-cache
+        
+    - name: Test Docker image
+      run: |
+        # Start the container
+        docker-compose up -d
+        
+        # Wait for service to be ready
+        sleep 30
+        
+        # Test health endpoint
+        curl -f http://localhost:8989/health || exit 1
+        
+        # Test basic routing
+        curl -s "http://localhost:8989/route?point=37.989355,32.523069&point=37.860192,32.547872&profile=car&locale=tr&points_encoded=false" | jq '.paths[0].distance' || exit 1
+        
+        # Stop container
+        docker-compose down 
